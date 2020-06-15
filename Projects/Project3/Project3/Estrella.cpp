@@ -7,15 +7,15 @@
 
 Estrella::Estrella(GLfloat s)
 {
-	s = 30;
+
 	numFaces = 20;     // Number of faces
 	numVertices = 60;  // Number of vertices
 
 	vertices = new GLfloat[numVertices * 3];
 
-	GLfloat profundidad = 5;
+	GLfloat profundidad = 1;
 	GLfloat R = s;
-	GLfloat r = s/4;
+	GLfloat r = s/4.0f;
 
 
 

@@ -43,10 +43,25 @@ void Figure3D::InitBuffers()
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 }
 
-void Figure3D::Draw(ShaderProgram * program, glm::mat4 transform)
+void Figure3D::ResetLocation()
 {
-	glm::mat4 matrix = transform;
-	program->SetUniformMatrix4("Transform", transform);
+	location = glm::mat4(1.0f);
+}
+
+void Figure3D::Translate(glm::vec3 t)
+{
+	location = glm::translate(location, t);
+}
+
+void Figure3D::Rotate(GLfloat angle, glm::vec3 axis)
+{
+	location = glm::rotate(location, glm::radians(angle), axis);
+}
+
+void Figure3D::Draw(ShaderProgram* program, glm::mat4 projection, glm::mat4 view)
+{
+	glm::mat4 mvp = projection * view * location;
+	program->SetUniformMatrix4("MVP", mvp);
 
 	glBindVertexArray(VAO);
 	glDrawElements(GL_TRIANGLES, numFaces * 3, GL_UNSIGNED_SHORT, NULL);

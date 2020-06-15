@@ -24,11 +24,17 @@ protected:
 	GLuint numVertices;  // Number of vertices
 	GLuint VBO[2];
 	GLuint VAO;
+	// matriz de transformación entre el sistema de cordenadas de la figura (local) 
+	// y el sistema de coordenadas del modelo (model)
+	glm::mat4 location; // Model matrix
 
 public:
 	~Figure3D();
 	void InitBuffers();
-	void Draw(ShaderProgram* program, glm::mat4 transform);
+	void ResetLocation();
+	void Translate(glm::vec3 t);
+	void Rotate(GLfloat angle, glm::vec3 axis);
+	void Draw(ShaderProgram* program, glm::mat4 projection, glm::mat4 view);
 };
 
 #endif

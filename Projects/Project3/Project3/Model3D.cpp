@@ -6,10 +6,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include "Model3D.h"
-#include "Figure3D.h"
+#include "Scene3D.h"
 #include "ShaderProgram.h"
-#include "Estrella.h"
-#include "Ground3D.h"
 
 //
 // FUNCIÓN: printError(char* msg)
@@ -18,139 +16,165 @@
 //
 void printError(char* msg)
 {
-	FILE* f;
-	fopen_s(&f, "ErrorLog.txt", "w");
-	fprintf(f, "%s", msg);
-	fclose(f);
+    FILE* f;
+    fopen_s(&f, "ErrorLog.txt", "w");
+    fprintf(f, "%s", msg);
+    fclose(f);
 }
 
 
 //
-// FUNCIÓN: Initialize(GLsizei, GLsizei)
+// FUNCIÓN: Model3D::Initialize(GLsizei, GLsizei)
 //
 // PROPÓSITO: Initializa el modelo 3D
 //
 void Model3D::Initialize(GLsizei w, GLsizei h)
 {
-	// Crea el programa
-	program = new ShaderProgram();
-	if (program->IsLinked() == GL_TRUE) program->Use();
-	else printError(program->GetLog());
+    // Crea el programa
+    program = new ShaderProgram();
+    if (program->IsLinked() == GL_TRUE) program->Use();
+    else printError(program->GetLog());
 
-	// Inicializa la posición de las figuras
-	figure = 8;
-	xAngle = 0.0f;
-	yAngle = 0.0f;
+    // Crea la cámara
+    camera = new Camera3D();
+    camera->SetPosition(5.0f, 10.0f, 110.0f);
 
-	// Crea las figuras
-	fig0 = new Estrella(5.0f);	// ESTRELLA
-	ground = new Ground3D(50.0f, 50.0f); // SUELO
-	ground->InitBuffers();
 
-	// Asigna el viewport y el clipping volume
-	ChangeSize(w, h);
+    // Crea la escena
+    scene = new Scene3D();
 
-	// Opciones de dibujo
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-	glFrontFace(GL_CCW);
-	glPolygonMode(GL_FRONT, GL_LINE);
+    // Asigna el viewport y la matriz de proyección
+    ChangeSize(w, h);
+
+    // Opciones de dibujo
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glFrontFace(GL_CCW);
+    glPolygonMode(GL_FRONT, GL_LINE);
 }
 
 //
-// FUNCIÓN: Finalize()
+// FUNCIÓN: Model3D::Finalize()
 //
 // PROPÓSITO: Libera los recursos del modelo 3D
 //
 void Model3D::Finalize()
 {
-	delete fig0;
-	delete ground;
-
-	delete program;
+    delete camera;
+    delete scene;
+    delete program;
 }
 
 //
-// FUNCIÓN: ChangeSize(GLsizei, GLsizei)
+// FUNCIÓN: Model3D::ChangeSize(GLsizei, GLsizei)
 //
-// PROPÓSITO: Modifica la configuración del viewport al cambiar el tamaño de la ventana
+// PROPÓSITO: Modifica la configuración del viewport al cambiar el tamaño de la 
+//            ventana
 //
 void Model3D::ChangeSize(GLsizei w, GLsizei h)
 {
-	double fov = 30.0 * M_PI / 180.0;
-	double sin_fov = sin(fov);
-	double cos_fov = cos(fov);
-	if (h == 0) h = 1;
-	GLfloat aspectRatio = (GLfloat)w / (GLfloat)h;
-	GLfloat wHeight = (GLfloat)(sin_fov * 0.2 / cos_fov);
-	GLfloat wWidth = wHeight * aspectRatio;
+    double fov = 15.0 * M_PI / 180.0;
+    double sin_fov = sin(fov);
+    double cos_fov = cos(fov);
+    if (h == 0) h = 1;
+    GLfloat aspectRatio = (GLfloat)w / (GLfloat)h;
+    GLfloat wHeight = (GLfloat)(sin_fov * 0.2 / cos_fov);
+    GLfloat wWidth = wHeight * aspectRatio;
 
-	glViewport(0, 0, w, h);
-	projection = glm::frustum(-wWidth, wWidth, -wHeight, wHeight, 0.2f, 400.0f);
+    glViewport(0, 0, w, h);
+    projection = glm::frustum(-wWidth, wWidth, -wHeight, wHeight, 0.2f, 400.0f);
 }
 
 
 //
-// FUNCIÓN: RenderScene()
+// FUNCIÓN: Model3D::RenderScene()
 //
 // PROPÓSITO: Genera la imagen
 //
 void Model3D::RenderScene()
 {
-	// Limpia el framebuffer
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// Matriz de transformación
-	glm::mat4 location = glm::mat4(1.0f);
-	location = glm::translate(location, glm::vec3(0.0f, 0.0f, -180.0f));
-	location = glm::rotate(location, (GLfloat)(M_PI*yAngle / 180), glm::vec3(0.0f, 1.0f, 0.0f));
-	location = glm::rotate(location, (GLfloat)(M_PI*xAngle / 180), glm::vec3(1.0f, 0.0f, 0.0f));
-
-	glm::mat4 transform = projection*location;
-
-	fig0->Draw(program, transform); 
-	ground->Draw(program, transform);
-	
+    glm::mat4 view = camera->ViewMatrix();
+    scene->Draw(program, projection, view);
+    
 }
 
 //
-// FUNCIÓN: TimerAction()
+// FUNCIÓN: Model3D::TimerAction()
 //
 // PROPÓSITO: Anima la escena
 //
 void Model3D::TimerAction()
 {
+    camera->MoveFront();
+    scene->timerAction(); // Giro de la estrella cada 3s
 }
 
 //
-// FUNCIÓN: KeyboardAction(int)
+// FUNCIÓN: Model3D::KeyboardAction(int)
 //
 // PROPÓSITO: respuesta a acciones de teclado
 //
 void Model3D::KeyboardAction(int virtualKey)
 {
-	switch (virtualKey)
-	{
-	case VK_UP:
-		xAngle += 5.0f;
-		break;
-	case VK_DOWN:
-		xAngle -= 5.0f;
-		break;
-	case VK_LEFT:
-		yAngle -= 5.0f;
-		break;
-	case VK_RIGHT:
-		yAngle += 5.0f;
-		break;
-	}
+    switch (virtualKey)
+    {
+    case VK_UP:
+        camera->TurnDown();
+        break;
+    case VK_DOWN:
+        camera->TurnUp();
+        break;
+    case VK_LEFT:
+        camera->TurnCCW();
+        break;
+    case VK_RIGHT:
+        camera->TurnCW();
+        break;
+    case 'S':
+        camera->SetMoveStep(0.0f);
+        break;
+    case VK_OEM_PLUS:
+        camera->SetMoveStep(camera->GetMoveStep() + 0.1f);
+        break;
+    case VK_OEM_MINUS:
+        camera->SetMoveStep(camera->GetMoveStep() - 0.1f);
+        break;
+    case 'Q':
+        camera->SetMoveStep(0.1f);
+        camera->MoveUp();
+        camera->SetMoveStep(0.0f);
+        break;
+    case 'A':
+        camera->SetMoveStep(0.1f);
+        camera->MoveDown();
+        camera->SetMoveStep(0.0f);
+        break;
+    case 'O':
+        camera->SetMoveStep(0.1f);
+        camera->MoveLeft();
+        camera->SetMoveStep(0.0f);
+        break;
+    case 'P':
+        camera->SetMoveStep(0.1f);
+        camera->MoveRight();
+        camera->SetMoveStep(0.0f);
+        break;
+    case 'K':
+        camera->TurnLeft();
+        break;
+    case 'L':
+        camera->TurnRight();
+        break;
+    }
 }
 
 //
-//  FUNCIÓN: MouseAction(int xPos, int yPos, WPARAM wParam)
+// FUNCIÓN: Model3D::MouseAction(int button, int state, int x, int y)
 //
-//  PROPÓSITO: respuesta del modelo a un movimiento del ratón.
+// PROPÓSITO: respuesta del modelo a un movimiento del ratón.
 //
 void Model3D::MouseAction(int button, int state, int x, int y)
 {
